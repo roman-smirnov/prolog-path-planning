@@ -135,12 +135,16 @@ best([[_,_,CUR_S]|SUCCESORS], [_,_,BEST_S]) :-
 
 % [[0,0,1,1], [1,1,1,1], [2,2,1,1], [3,3,1,1]]
 
+
+%%% STAV $$$
+% TODO: find best successor state! state with max speed.
+% TODO: find path recursively. 
+% TODO: set maximum path length/steps - 10 steps forward recursion
+% TODO: proximity around vehicle -+1 position.
+
+
+%%% ROMAN $$$
 % TODO: check velocity change actually works
-% TODO: find best successor state!
-% TODO: set maximum path length/steps
-% TODO: find path recursively
-% TODO: collect solutions into a list, sort by speed, return best solution
-% TODO: proximity around vehicle
 % TODO: use retractall instead of updating one by one
 % TODO: separate update and extrapolate rules
 % TODO: create the search pipeline
