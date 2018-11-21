@@ -108,7 +108,21 @@ valid_transition(CUR_POS_X, CUR_POS_Y, CUR_SPEED, NEXT_POS_X, NEXT_POS_Y, NEXT_S
 % add vehicle positions to fact database
 set_vehicle_positions([]).
 set_vehicle_positions([[POS_X, POS_Y, _VEL_X, _VEL_Y]|VEHICLES]) :-
-    assertz(vehicle_at_position(POS_X,POS_Y)),    
+    assertz(vehicle_at_position(POS_X,POS_Y)),
+    
+    % proximity around vehicle 
+    X_L is POS_X-1,
+    X_M is POS_X+1,
+    Y_L is POS_Y-1,
+    Y_M is POS_Y+1,
+    assertz(vehicle_at_position(POS_X,POS_Y+1)),    
+    assertz(vehicle_at_position(POS_X,Y_L)),    
+    assertz(vehicle_at_position(X_L,POS_Y)),
+    assertz(vehicle_at_position(X_L,Y_M)),    
+    assertz(vehicle_at_position(X_L,Y_L)),  
+    assertz(vehicle_at_position(X_M,POS_Y)),
+    assertz(vehicle_at_position(X_M,Y_M)),    
+    assertz(vehicle_at_position(X_M,Y_L)),  
     set_vehicle_positions(VEHICLES).
 
 % extrapolate vehicle positions, assert into databsem, retract previous positions
@@ -128,19 +142,24 @@ successors(CUR_POS_X, CUR_POS_Y, CUR_SPEED, SUCCESSORS) :-
 
 % find best successor speed
 % ?- successors(1,1,10, S), length(S,LEN), best(S,B).
-best([],0).
-best([[_,_,CUR_S]|SUCCESORS], [_,_,BEST_S]) :-
-    best(SUCCESORS, [_,_,NXT_S]),!,
-    ((CUR_S>NXT_S, BEST_S is CUR_S); BEST_S is NXT_S).
+best([],0,_,_).
+best([[CUR_POS_X, CUR_POS_Y,CUR_S]|SUCCESORS], BEST_S, S_X, S_Y) :-
+    best(SUCCESORS, NXT_S, NXT_S_X, NXT_S_Y),!,
+    ((CUR_S>NXT_S, 
+     BEST_S is CUR_S,
+     S_X is CUR_POS_X,
+     S_Y is CUR_POS_Y); 
+     BEST_S is NXT_S,
+     S_X is NXT_S_X,
+     S_Y is NXT_S_Y).
 
-% [[0,0,1,1], [1,1,1,1], [2,2,1,1], [3,3,1,1]]
-
+get_best_successor(CUR_POS_X, CUR_POS_Y, CUR_SPEED, BEST_S, S_X, S_Y):-
+    successors(CUR_POS_X, CUR_POS_Y, CUR_SPEED, SUCCESSORS),
+    best(SUCCESSORS, BEST_S, S_X, S_Y).
 
 %%% STAV $$$
-% TODO: find best successor state! state with max speed.
 % TODO: find path recursively. 
 % TODO: set maximum path length/steps - 10 steps forward recursion
-% TODO: proximity around vehicle -+1 position.
 
 
 %%% ROMAN $$$
@@ -149,5 +168,3 @@ best([[_,_,CUR_S]|SUCCESORS], [_,_,BEST_S]) :-
 % TODO: separate update and extrapolate rules
 % TODO: create the search pipeline
 % TODO: separate into modules
-
-
