@@ -14,7 +14,7 @@
 
 % temporal resolution is 0.1 seconds per search graph transition
 % NOTE: we've defined it to be 10 s/m (seconds per meter - a unit of pace) to avoid division (we multiply instead).
-time_step(10).
+time_step(0.1).
 
 % speed limit in m/s (meter per second)
 max_speed(22).
@@ -39,14 +39,11 @@ road_max_y(6945).
 
 % don't look at possible positions farther than this value (relative to ego vehicle) 
 clipping_distance_x(1).
-clipping_distance_y(10).
+clipping_distance_y(2).
 
 % proximity to vehicle considered unsafe
 unsafe_proximity_x(1).
 unsafe_proximity_y(2).
-
-% database of vehicle coordinates
-:- dynamic vehicle_at_position/2.
 
 % generate integer values in given range
 range(Low, Low, _).
@@ -73,12 +70,12 @@ valid_position(CUR_POS_X, CUR_POS_Y, NEXT_POS_X, NEXT_POS_Y) :-
 
 % euclidean distance between given coordinates
 distance(CUR_POS_X, CUR_POS_Y, NEXT_POS_X, NEXT_POS_Y, DISTANCE) :-
-    DISTANCE is round(sqrt((CUR_POS_X-NEXT_POS_X)**2 + (CUR_POS_Y-NEXT_POS_Y)**2)).
+    DISTANCE is sqrt((CUR_POS_X-NEXT_POS_X)**2 + (CUR_POS_Y-NEXT_POS_Y)**2).
 
 % average speed to go the distance in a single time step
 speed(DISTANCE, SPEED) :-
     time_step(TIME_STEP),
-    SPEED is DISTANCE * TIME_STEP.
+    SPEED is round(DISTANCE/TIME_STEP).
 
 % speed constraints
 valid_speed(SPEED) :-
@@ -88,7 +85,7 @@ valid_speed(SPEED) :-
 % average change in speed during transition
 acceleration(CUR_SPEED, NEXT_SPEED, ACCELERATION) :-
     time_step(TIME_STEP),
-    ACCELERATION is abs(NEXT_SPEED - CUR_SPEED). %*TIME_STEP.
+    ACCELERATION is round(abs(NEXT_SPEED - CUR_SPEED)/TIME_STEP).
 
 % acceleration constraints
 valid_acceleration(ACCELERATION) :-
@@ -105,35 +102,23 @@ valid_transition(CUR_POS_X, CUR_POS_Y, CUR_SPEED, NEXT_POS_X, NEXT_POS_Y, NEXT_S
     valid_acceleration(ACCELERATION),
     not(vehicle_at_position(NEXT_POS_X, NEXT_POS_Y)).
 
-% add vehicle positions to fact database
-set_vehicle_positions([]).
-set_vehicle_positions([[POS_X, POS_Y, _VEL_X, _VEL_Y]|VEHICLES]) :-
-    assertz(vehicle_at_position(POS_X,POS_Y)),    
-    set_vehicle_positions(VEHICLES).
-
-% extrapolate vehicle positions, assert into databsem, retract previous positions
-update_vehicle_positions([],[]).
-update_vehicle_positions([[X, Y, VEL_X, VEL_Y]| CUR], NEW) :-
-    NEW_X is X+VEL_X, NEW_Y is Y+VEL_Y,
-    append([[NEW_X, NEW_Y, VEL_X, VEL_Y]], NXT, NEW),
-    % remove old position from database, add new position
-    retract(vehicle_at_position(X,Y)),
-    assertz(vehicle_at_position(NEW_X,NEW_Y)),
-    update_vehicle_positions(CUR, NXT).
-
 % find all valid successor positions
 % ?- successors(1,1,10, S), length(S,LEN).
 successors(CUR_POS_X, CUR_POS_Y, CUR_SPEED, SUCCESSORS) :-
     findall([NEXT_POS_X, NEXT_POS_Y, NEXT_SPEED], valid_transition(CUR_POS_X, CUR_POS_Y, CUR_SPEED, NEXT_POS_X, NEXT_POS_Y, NEXT_SPEED), SUCCESSORS).
 
+get_path(CUR_POS_X, CUR_POS_Y, CUR_SPEED, NEXT_S, NEXT_D) :-
+    successors(CUR_POS_X, CUR_POS_Y, CUR_SPEED, SUCCESSORS),
+    [S1,D1,]
+
+
+
 % find best successor speed
 % ?- successors(1,1,10, S), length(S,LEN), best(S,B).
-best([],0).
-best([[_,_,CUR_S]|SUCCESORS], [_,_,BEST_S]) :-
-    best(SUCCESORS, [_,_,NXT_S]),!,
-    ((CUR_S>NXT_S, BEST_S is CUR_S); BEST_S is NXT_S).
-
-% [[0,0,1,1], [1,1,1,1], [2,2,1,1], [3,3,1,1]]
+% best([],0).
+% best([[_,_,CUR_S]|SUCCESORS], BEST_S) :-
+%     best(SUCCESORS, NXT_S),!,
+%     ((CUR_S>NXT_S, BEST_S is CUR_S); BEST_S is NXT_S).
 
 
 %%% STAV $$$
@@ -144,10 +129,9 @@ best([[_,_,CUR_S]|SUCCESORS], [_,_,BEST_S]) :-
 
 
 %%% ROMAN $$$
+% TODO: hardcore the acceleration and velocity values. 
 % TODO: check velocity change actually works
-% TODO: use retractall instead of updating one by one
-% TODO: separate update and extrapolate rules
 % TODO: create the search pipeline
 % TODO: separate into modules
 
-
+% [[0,0,1,1], [1,1,1,1], [2,2,1,1], [3,3,1,1]]

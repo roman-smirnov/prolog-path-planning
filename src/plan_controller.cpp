@@ -69,20 +69,22 @@ void PlanController::handle_simulator_message(char *data, size_t length) {
   double end_path_d = j[1]["end_path_d"];
 
   // Sensor Fusion Data, a list of all other cars on the same side of the road.
-  // 					auto sensor_fusion = j[1]["sensor_fusion"];
-  // 					for (auto sf: sensor_fusion) {
-  // 						for(const auto &sf_val: sf){
-  // 							cout<<sf_val<<" ";
-  // 						}
-  // 						cout<<endl;
-  // 					}
+  vector<vector<int>> vehicles = j[1]["sensor_fusion"];
 
-  vector<double> next_x_vals;
-  vector<double> next_y_vals;
+
+  // for (int i = 0; i < vehicles.size(); ++i) {
+  // for (int k = 0; k < vehicles[0].size() ; ++k) {
+  //   vehicles[i][k] = round(vehicles[i][k]);
+  // }
+  // }
 
   json msgJson;
+  msgJson["vehicles"] = vehicles;
   msgJson["car_s"] = car_s;
   msgJson["car_d"] = car_d;
+  msgJson["car_speed"] = car_speed;
+
+
   auto msg = msgJson.dump();
   network_gateway->send_message_to_prolog(msg);
 
