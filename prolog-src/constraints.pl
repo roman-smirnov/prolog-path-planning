@@ -88,7 +88,7 @@ valid_speed(SPEED) :-
 % average change in speed during transition
 acceleration(CUR_SPEED, NEXT_SPEED, ACCELERATION) :-
     time_step(TIME_STEP),
-    ACCELERATION is abs(NEXT_SPEED - CUR_SPEED)*TIME_STEP.
+    ACCELERATION is abs(NEXT_SPEED - CUR_SPEED). %*TIME_STEP.
 
 % acceleration constraints
 valid_acceleration(ACCELERATION) :-
@@ -104,10 +104,6 @@ valid_transition(CUR_POS_X, CUR_POS_Y, CUR_SPEED, NEXT_POS_X, NEXT_POS_Y, NEXT_S
     acceleration(CUR_SPEED, NEXT_SPEED, ACCELERATION),
     valid_acceleration(ACCELERATION),
     not(vehicle_at_position(NEXT_POS_X, NEXT_POS_Y)).
-
-
-% TODO: collect solutions into a list, sort by speed, return best solution
-% TODO: proximity around vehicle
 
 % add vehicle positions to fact database
 set_vehicle_positions([]).
@@ -125,8 +121,29 @@ update_vehicle_positions([[X, Y, VEL_X, VEL_Y]| CUR], NEW) :-
     assertz(vehicle_at_position(NEW_X,NEW_Y)),
     update_vehicle_positions(CUR, NXT).
 
+% find all valid successor positions
+% ?- successors(1,1,10, S), length(S,LEN).
+successors(CUR_POS_X, CUR_POS_Y, CUR_SPEED, SUCCESSORS) :-
+    findall([NEXT_POS_X, NEXT_POS_Y, NEXT_SPEED], valid_transition(CUR_POS_X, CUR_POS_Y, CUR_SPEED, NEXT_POS_X, NEXT_POS_Y, NEXT_SPEED), SUCCESSORS).
+
+% find best successor speed
+% ?- successors(1,1,10, S), length(S,LEN), best(S,B).
+best([],0).
+best([[_,_,CUR_S]|SUCCESORS], [_,_,BEST_S]) :-
+    best(SUCCESORS, [_,_,NXT_S]),!,
+    ((CUR_S>NXT_S, BEST_S is CUR_S); BEST_S is NXT_S).
+
 % [[0,0,1,1], [1,1,1,1], [2,2,1,1], [3,3,1,1]]
 
+% TODO: check velocity change actually works
+% TODO: find best successor state!
+% TODO: set maximum path length/steps
+% TODO: find path recursively
+% TODO: collect solutions into a list, sort by speed, return best solution
+% TODO: proximity around vehicle
 % TODO: use retractall instead of updating one by one
 % TODO: separate update and extrapolate rules
+% TODO: create the search pipeline
+% TODO: separate into modules
+
 
