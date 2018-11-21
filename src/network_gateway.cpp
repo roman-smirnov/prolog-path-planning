@@ -37,11 +37,9 @@ void NetworkGateway::set_controller(PlanController *plan_controller) {
 void NetworkGateway::init_simulator_networking() {
   websocket_hub.onMessage([this](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
 	// cout << "MESSAGE RECEIVED FROM SIMULATOR CLIENT" << endl;
-
 	if (plan_controller!=nullptr) {
 	  plan_controller->handle_simulator_message(data, length);
 	}
-
   });
 
   websocket_hub.onConnection([](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req) {
@@ -75,8 +73,11 @@ void NetworkGateway::init_prolog_networking() {
 	cout << "CONNECTED TO LOGIC SERVER " << endl;
   });
 
-  websocket_hub.onMessage([](uWS::WebSocket<uWS::CLIENT> ws, char *data, size_t length, uWS::OpCode opCode) {
-	cout << "MESSAGE RECEIVED FROM LOGIC SERVER" << endl;
+  websocket_hub.onMessage([this](uWS::WebSocket<uWS::CLIENT> ws, char *data, size_t length, uWS::OpCode opCode) {
+	// cout << "MESSAGE RECEIVED FROM LOGIC SERVER" << endl;
+	if (plan_controller!=nullptr) {
+	  plan_controller->handle_prolog_message(data, length);
+	}
   });
 
   websocket_hub.onDisconnection([](uWS::WebSocket<uWS::CLIENT> ws, int code, char *message, size_t length) {

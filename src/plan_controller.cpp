@@ -36,6 +36,7 @@ void PlanController::handle_simulator_message(char *data, size_t length) {
 
   auto msg_str = has_data(data);
 
+
   if (msg_str.empty()) {
 	// Manual driving
 	string msg = "42[\"manual\",{}]";
@@ -49,6 +50,8 @@ void PlanController::handle_simulator_message(char *data, size_t length) {
   if (event!="telemetry") {
 	return;
   }
+
+
 
   // Main car'msg_str localization Data
   double car_x = j[1]["x"];
@@ -74,30 +77,44 @@ void PlanController::handle_simulator_message(char *data, size_t length) {
   // 						cout<<endl;
   // 					}
 
-  json msgJson;
   vector<double> next_x_vals;
   vector<double> next_y_vals;
 
-  // define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
-  for (int i = 0; i < 50; ++i) {
-	double next_s = car_s + (i + 1)*DISTANCE_INCREMENT;
-	double next_d = 6;
+  json msgJson;
+  msgJson["car_s"] = car_s;
+  msgJson["car_d"] = car_d;
+  auto msg = msgJson.dump();
+  network_gateway->send_message_to_prolog(msg);
 
-	vector<double> xy = map_gateway->frenet_to_xy(next_s, next_d);
-
-	next_x_vals.push_back(xy[0]);
-	next_y_vals.push_back(xy[1]);
-  }
-
-  msgJson["next_x"] = next_x_vals;
-  msgJson["next_y"] = next_y_vals;
-
-  auto msg = "42[\"control\"," + msgJson.dump() + "]";
-  network_gateway->send_message_to_simulator(msg);
 }
 
 
 void PlanController::handle_prolog_message(char *data, size_t length) {
+  if (map_gateway==nullptr || network_gateway==nullptr) {
+	return;
+  }
+
+  string in_msg(data, length);
+  auto in_json = json::parse(in_msg);
+
+  vector<double> next_x_vals = in_json["next_d"];
+  vector<double> next_y_vals = in_json["next_s"];
+
+  // define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
+  for (int i = 0; i < 2; ++i) {
+	vector<double> xy = map_gateway->frenet_to_xy(next_y_vals[i], next_x_vals[i]);
+	next_x_vals[i] = xy[0];
+	next_y_vals[i] = xy[1];
+  }
+
+  json out_json;
+  out_json["next_x"] = next_x_vals;
+  out_json["next_y"] = next_y_vals;
+
+  auto out_msg = "42[\"control\"," + out_json.dump() + "]";
+
+  network_gateway->send_message_to_simulator(out_msg);
+
 }
 
 
