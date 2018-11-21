@@ -31,17 +31,19 @@ road_min_x(1).
 % road edge is at x=12, vehicle must be to its left
 road_max_x(11).
 
-% the given highway segment start coordinate
+% highway segment start
 road_min_y(1).
 
-% the given highway segment end coordinate
+% highway segment end
 road_max_y(6945).
 
-% don't look at possible positions laterally farther (relative to ego vehicle) than this value
+% don't look at possible positions farther than this value (relative to ego vehicle) 
 clipping_distance_x(1).
-
-% don't look at possible positions further down the highway (relative to ego vehicle) than this value
 clipping_distance_y(10).
+
+% proximity to vehicle considered unsafe
+unsafe_proximity_x(1).
+unsafe_proximity_y(2).
 
 % database of vehicle coordinates
 :- dynamic vehicle_at_position/2.
@@ -105,16 +107,26 @@ valid_transition(CUR_POS_X, CUR_POS_Y, CUR_SPEED, NEXT_POS_X, NEXT_POS_Y, NEXT_S
 
 
 % TODO: collect solutions into a list, sort by speed, return best solution
-% TODO: add vehicle position to database
-% TODO: extrapolate vehicle positions, assert into databsem, retract previous positions
+% TODO: proximity around vehicle
 
+% add vehicle positions to fact database
+set_vehicle_positions([]).
+set_vehicle_positions([[POS_X, POS_Y, _VEL_X, _VEL_Y]|VEHICLES]) :-
+    assertz(vehicle_at_position(POS_X,POS_Y)),    
+    set_vehicle_positions(VEHICLES).
 
+% extrapolate vehicle positions, assert into databsem, retract previous positions
+update_vehicle_positions([],[]).
+update_vehicle_positions([[X, Y, VEL_X, VEL_Y]| CUR], NEW) :-
+    NEW_X is X+VEL_X, NEW_Y is Y+VEL_Y,
+    append([[NEW_X, NEW_Y, VEL_X, VEL_Y]], NXT, NEW),
+    % remove old position from database, add new position
+    retract(vehicle_at_position(X,Y)),
+    assertz(vehicle_at_position(NEW_X,NEW_Y)),
+    update_vehicle_positions(CUR, NXT).
 
-% assertz(vehicle_at_position(1,1)).
-% retractall(vehicle_at_position(X,Y)).
-% vehicle located at coordinates
-% vehicle_position(DISP_X,DISP_Y,[[X_CAR,Y_CAR]|CARS_LIST]) :-
-%     (DISP_X is X_CAR, DISP_Y is Y_CAR);
-%     is_car_position(DISP_X,DISP_Y,CARS_LIST).
+% [[0,0,1,1], [1,1,1,1], [2,2,1,1], [3,3,1,1]]
 
-% is_car_position(DISP_X,DISP_Y,[]).
+% TODO: use retractall instead of updating one by one
+% TODO: separate update and extrapolate rules
+
