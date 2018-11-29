@@ -2,29 +2,22 @@
 
 ## TODO
 
-1. implement pimpl
-2. implement stand alone pure virtual headers
-3. remove double documentations 
-4. make a telemetry model
-5. implement a trajectory model
-6. make all globals const
-7. move hardcoded strings to consts (cmd+opt+c?) 
-8. lateral speed of a vehicle is bounded by forward speed
-9. can't drive in reverse 
-10. punish for lateral velocity
-11. move numbers to constant predicates
-
-## Constrains
-
-1. constraint on total eucledian distance - 4m 
-2. constraint on direction
-3. constraint on each step distance 
-4. constraint on proximy to other cars
-5. constraint on not crossing the middle divider and boundry divider
-6. penalty for driving between lanes
-7. penalty for driving too slow
-8. penalty for getting too close to other cars
-9. constraint on re-visiting states, 
+- ~~aggregate instead of findall~~
+- ~~acceleration should be average of cur and nxt~~
+- ~~separate node and state~~
+- ~~don't re-evaluate states~~
+- trajectory model
+- obstacles
+- ~~visited~~
+- ~~frontier~~
+- encourage values in range instead of reject
+- encourage
+- ~~remove c++ linear algebra lib~~
+-  polish c++ code
+- go over prolog best practices and style guide
+- ~~separate prolog code into modules~~
+- polish prolog code
+- write documentation
 
 ### Clarifications
 
