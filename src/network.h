@@ -24,10 +24,10 @@
 class PlanController;
 
 // handles simulator and prolog networking via websockets
-class NetworkGateway {
+class Network {
  public:
   // sets up the networking component
-  NetworkGateway();
+  Network();
 
   // start the server, connect to client, begin handling requests and responses, etc
   void start();

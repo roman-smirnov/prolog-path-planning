@@ -3,7 +3,7 @@
 
  network_gateway.cpp
 
- implementation of class NetworkGateway declared in network_gateway.h
+ implementation of class Network declared in network_gateway.h
 
 ================================================================================================================================
 */
@@ -19,21 +19,21 @@ using std::endl;
 /*--------------------------------------------------------------
  Sets up the networking component
 --------------------------------------------------------------*/
-NetworkGateway::NetworkGateway() {
+Network::Network() {
   init_simulator_networking();
   init_prolog_networking();
 }
 
 
-void NetworkGateway::set_controller(PlanController *plan_controller) {
-  NetworkGateway::plan_controller = plan_controller;
+void Network::set_controller(PlanController *plan_controller) {
+  Network::plan_controller = plan_controller;
 }
 
 /*--------------------------------------------------------------
  Setup simulator port listening, request callbacks, response handling, etc
  The simulator service is a websocket client, the function sets up a server for it to connect and send data to.
 --------------------------------------------------------------*/
-void NetworkGateway::init_simulator_networking() {
+void Network::init_simulator_networking() {
   websocket_hub.onMessage([this](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
 	// cout << "MESSAGE RECEIVED FROM SIMULATOR CLIENT" << endl;
 	if (plan_controller!=nullptr) {
@@ -62,7 +62,7 @@ void NetworkGateway::init_simulator_networking() {
  Setup Prolog connection, request callbacks, response handling, etc
  The Prolog service is a websocket server, the function sets up a client to open a websocket connectin and send data.
 --------------------------------------------------------------*/
-void NetworkGateway::init_prolog_networking() {
+void Network::init_prolog_networking() {
   websocket_hub.onError([](void *user) {
 	cerr << "ERROR ON CONNECTION ATTEMPT TO LOGIC SERVER" << endl;
 	// exit(EXIT_FAILURE);
@@ -91,7 +91,7 @@ void NetworkGateway::init_prolog_networking() {
 /*--------------------------------------------------------------
  Start simulator and Prolog networking
 --------------------------------------------------------------*/
-void NetworkGateway::start() {
+void Network::start() {
   websocket_hub.run();
 }
 
@@ -99,7 +99,7 @@ void NetworkGateway::start() {
 /*--------------------------------------------------------------
  Send a message to the simulator
 --------------------------------------------------------------*/
-void NetworkGateway::send_message_to_simulator(string &msg) {
+void Network::send_message_to_simulator(string &msg) {
   websocket_hub.getDefaultGroup<uWS::SERVER>().broadcast(msg.data(), msg.length(), uWS::OpCode::TEXT);
 }
 
@@ -107,7 +107,7 @@ void NetworkGateway::send_message_to_simulator(string &msg) {
 /*--------------------------------------------------------------
  Send a message to the prolog server
 --------------------------------------------------------------*/
-void NetworkGateway::send_message_to_prolog(string &msg) {
+void Network::send_message_to_prolog(string &msg) {
   websocket_hub.getDefaultGroup<uWS::CLIENT>().broadcast(msg.data(), msg.length(), uWS::OpCode::TEXT);
 }
 

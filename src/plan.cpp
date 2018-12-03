@@ -10,6 +10,7 @@
 
 #include "plan.h"
 #include "spline.h"
+#include "trajectory.h"
 
 using std::string;
 using std::vector;
@@ -18,7 +19,7 @@ using std::cerr;
 using std::endl;
 
 
-void PlanController::set_gateways(NetworkGateway *network_gateway, MapGateway *map_gateway) {
+void PlanController::set_gateways(Network *network_gateway, MapGateway *map_gateway) {
   PlanController::network_gateway = network_gateway;
   PlanController::map_gateway = map_gateway;
 }
@@ -34,62 +35,40 @@ void PlanController::handle_simulator_message(char *data, size_t length) {
   }
 
   auto msg_str = has_data(data);
-
   if (msg_str.empty()) {
-	// Manual driving
-	string msg = "42[\"manual\",{}]";
+	string msg = "42[\"manual\",{}]"; // Manual driving
 	network_gateway->send_message_to_simulator(msg);
 	return;
   }
-
   auto j = nlohmann::json::parse(msg_str);
   auto event = j[0].get<string>();
-
   if (event!="telemetry") {
 	return;
   }
 
-
-  // Main car'msg_str localization Data
-  double car_x = j[1]["x"];
-  double car_y = j[1]["y"];
+  // ego vehicle localization Data
   double car_s = j[1]["s"];
   double car_d = j[1]["d"];
-  double car_yaw = j[1]["yaw"];
   double car_speed = j[1]["speed"];
-
-
-
-  // Previous path data given to the Planner
-  auto previous_path_x = j[1]["previous_path_x"];
-  auto previous_path_y = j[1]["previous_path_y"];
-  // Previous path'msg_str end msg_str and d values
-  double end_path_s = j[1]["end_path_s"];
   double end_path_d = j[1]["end_path_d"];
-  // Sensor Fusion Data, a list of all other cars on the same side of the road.
-  // vector<vector<int>> vehicles = j[1]["sensor_fusion"];
-  // for (int i = 0; i < vehicles.size(); ++i) {
-  // for (int k = 0; k < vehicles[0].size() ; ++k) {
-  //   vehicles[i][k] = round(vehicles[i][k]);
-  // }
-  // }
+  double end_path_s = j[1]["end_path_s"];
 
-  cout << "car_d: " << car_d << " car_s: " << car_s << " car_speed: " << car_speed << endl;
-  cout << "end_path_d: " << end_path_d << " end_path_s: " << end_path_s << endl;
+  // a ist of all other cars on the same side of the road.
+  vector<vector<int>> vehicles = j[1]["sensor_fusion"];
 
-  car_speed = car_speed < 49.0 ? car_speed : 49.0;
-  vector<double> velocity = map_gateway->velocity(car_speed, car_d, car_s, end_path_d, end_path_s);
+  auto velocity = map_gateway->velocity(car_speed, car_d, car_s, end_path_d, end_path_s);
+
+  trajectory.set_telemetry(car_d, car_s);
 
   nlohmann::json msgJson;
-  msgJson["pos_d"] = car_d;//end_path_d > 0 ? end_path_d : car_d;
-  msgJson["pos_s"] = car_s; //end_path_s > 0 ? end_path_s : car_s;
+  msgJson["pos_d"] = car_d;
+  msgJson["pos_s"] = car_s;
   msgJson["vel_d"] = velocity[0];
-  msgJson["vel_s"] = velocity[1];
-  // msgJson["vehicles"] = vehicles;
+  msgJson["vel_s"] = 22;
+  msgJson["vehicles"] = vehicles;
+
   auto msg = msgJson.dump();
-
   network_gateway->send_message_to_prolog(msg);
-
 }
 
 
@@ -101,34 +80,64 @@ void PlanController::handle_prolog_message(char *data, size_t length) {
   string in_msg(data, length);
 
   auto in_json = nlohmann::json::parse(in_msg);
-  double path_len = in_json["path_len"];
+  vector<double> next_d = in_json["next_d"];
+  vector<double> next_s = in_json["next_s"];
   double time_inc = in_json["time_inc"];
-  vector<double> next_vals_d = in_json["next_d"];
-  vector<double> next_vals_s = in_json["next_s"];
+
   vector<double> next_vals_t;
   vector<double> next_vals_x;
   vector<double> next_vals_y;
+  tk::spline spline_t_to_s;
   tk::spline spline_t_to_x;
   tk::spline spline_t_to_y;
 
-  // define a path made up of (x,y) points that the car will visit sequentially every 0.02 seconds
-  for (int t = 0; t < path_len; ++t) {
-	vector<double> xy = map_gateway->frenet_to_xy(next_vals_s[t], next_vals_d[t]);
-	next_vals_x.push_back(xy[0]);
-	next_vals_y.push_back(xy[1]);
-	next_vals_t.push_back((double) t*time_inc);
+  auto prev_d = trajectory.get_traj_d();
+  auto prev_s = trajectory.get_traj_s();
+
+  vector<double> traj_d;
+  vector<double> traj_s;
+
+  for (int i = 0; i < prev_s.size(); ++i) {
+    if(prev_s.at(i) < trajectory.get_pos_s()) {
+      traj_s.push_back(prev_s.at(i));
+      traj_d.push_back(prev_d.at(i));
+    }
   }
 
+  traj_s.push_back(trajectory.get_pos_s());
+  traj_d.push_back(trajectory.get_pos_d());
+
+  for (int i = 0; i < next_s.size(); ++i) {
+    if(next_s.at(i) > trajectory.get_pos_s()) {
+      traj_s.push_back(next_s.at(i));
+      traj_d.push_back(next_d.at(i));
+    }
+  }
+
+  // define a path made up of (x,y) points that the car will visit sequentially every 0.02 seconds
+  for (int t = 0; t < traj_s.size(); ++t) {
+	vector<double> xy = map_gateway->frenet_to_xy(traj_s[t], traj_d[t]);
+	next_vals_x.push_back(xy[0]);
+	next_vals_y.push_back(xy[1]);
+	next_vals_t.push_back(t*time_inc);
+  }
+
+  spline_t_to_s.set_points(next_vals_t, traj_s);
   spline_t_to_x.set_points(next_vals_t, next_vals_x);
   spline_t_to_y.set_points(next_vals_t, next_vals_y);
   next_vals_x.clear();
   next_vals_y.clear();
 
-  auto num_values = path_len*time_inc/SIMULATOR_SAMPLE_TIME_INC;
+  trajectory.set_traj_d(next_d);
+  trajectory.set_traj_s(next_s);
+
+  auto num_values = traj_s.size()*time_inc/SIM_SAMPLE_TIME_INC;
 
   for (int t = 0; t < num_values; ++t) {
-	next_vals_x.push_back(spline_t_to_x((double) t*SIMULATOR_SAMPLE_TIME_INC));
-	next_vals_y.push_back(spline_t_to_y((double) t*SIMULATOR_SAMPLE_TIME_INC));
+    if(spline_t_to_s(t*SIM_SAMPLE_TIME_INC)>trajectory.get_pos_s()){
+      next_vals_x.push_back(spline_t_to_x(t*SIM_SAMPLE_TIME_INC));
+      next_vals_y.push_back(spline_t_to_y(t*SIM_SAMPLE_TIME_INC));
+    }
   }
 
   nlohmann::json out_json;
@@ -136,9 +145,7 @@ void PlanController::handle_prolog_message(char *data, size_t length) {
   out_json["next_y"] = next_vals_y;
   auto out_msg = "42[\"control\"," + out_json.dump() + "]";
   network_gateway->send_message_to_simulator(out_msg);
-
 }
-
 
 string PlanController::has_data(string msg_str) {
   auto found_null = msg_str.find("null");

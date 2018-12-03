@@ -14,9 +14,11 @@
 #include "json.hpp"
 #include "network.h"
 #include "map.h"
+#include "trajectory.h"
 
-class NetworkGateway;
+class Network;
 class MapGateway;
+class Trajectory;
 
 class PlanController {
  public:
@@ -29,21 +31,23 @@ class PlanController {
   void handle_prolog_message(char *data, size_t length);
 
   // set the gateways to handle world map and networking
-  void set_gateways(NetworkGateway *network_gateway, MapGateway *map_gateway);
+  void set_gateways(Network *network_gateway, MapGateway *map_gateway);
 
  private:
-
   // simulator sampling time increment
-  static constexpr double SIMULATOR_SAMPLE_TIME_INC = 0.02;
+  static constexpr double SIM_SAMPLE_TIME_INC = 0.02;
 
   // receive requests and send messages
-  NetworkGateway *network_gateway = nullptr;
+  Network *network_gateway = nullptr;
 
   // handle world representation related logic
   MapGateway *map_gateway = nullptr;
 
   // Checks if event has JSON data. return the message in strin format, or return an empty string if there's no message
   std::string has_data(std::string msg_str);
+
+  // encapsulate vehicle trajectory
+  Trajectory trajectory;
 
 };
 

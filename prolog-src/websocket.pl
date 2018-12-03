@@ -8,8 +8,6 @@
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-
 :- use_module(library(http/websocket)).
 :- use_module(library(http/thread_httpd)).
 :- use_module(library(http/http_dispatch)).
@@ -53,13 +51,12 @@ start_state_from_message(START, Message) :-
 
 % parse incoming json message, generate response message
 handle_message(Message, Response) :-
-    % retractall(vehicle_at_position(_,_,_)),
-    % set_vehicle_positions(Message.data.vehicles),  % [0,1,2,3,4,5,6])
-    max_search_depth(PATH_LENGTH),
     time_step(TIME_INCREMENT),
+    VEHICLES = Message.data.vehicles,
     start_state_from_message(START, Message),
-    search(START, GOAL),
+    search(START,VEHICLES, GOAL),
     path(GOAL, PATH_X, PATH_Y),
+    length(PATH_X, PATH_LENGTH),    
     Response=_{next_d:PATH_X, next_s:PATH_Y, path_len:PATH_LENGTH, time_inc:TIME_INCREMENT}.
     
 
